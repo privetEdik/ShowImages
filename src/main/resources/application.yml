@@ -1,0 +1,14 @@
+#spring.application.name=ShowImages
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/slideshowdb
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+#  data:
+#    mongodb: mongodb://admin:secret@localhost:27017/admin
+
