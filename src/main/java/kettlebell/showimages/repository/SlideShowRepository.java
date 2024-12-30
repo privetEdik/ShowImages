@@ -16,4 +16,7 @@ public interface SlideShowRepository extends JpaRepository<SlideShow, Long> {
             "WHERE s.id = :slideshowId " +
             "ORDER BY i.date ASC")
     List<Image> findImagesBySlideShowIdOrderByDate(@Param("slideshowId") Long slideshowId);
+
+    @Query("SELECT CASE WHEN EXISTS (SELECT 1 FROM SlideShow s WHERE s.id = :id) THEN true ELSE false END")
+    boolean existsById(@Param("id") Long id);
 }

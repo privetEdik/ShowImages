@@ -1,4 +1,4 @@
-package kettlebell.showimages.validator;
+package kettlebell.showimages.service.validator;
 
 import org.springframework.stereotype.Component;
 
@@ -13,9 +13,9 @@ public class ImageValidator {
             ImageIO.getReaderFormatNames()
     ));
 
-    public boolean isValidImageExtension(String url) {
+    public boolean isNotValidImageExtension(String url) {
         String extension = getFileExtension(url);
-        return SUPPORTED_FORMATS.contains(extension.toLowerCase());
+        return !SUPPORTED_FORMATS.contains(extension.toLowerCase());
     }
 
     private String getFileExtension(String url) {

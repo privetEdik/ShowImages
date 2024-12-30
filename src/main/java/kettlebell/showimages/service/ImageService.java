@@ -10,7 +10,8 @@ public interface ImageService {
 
     void deleteImage(Long id);
 
-    List<ImageDto> searchImages(String keyword, Integer duration);
+    List<ImageDto> searchByDuration(Integer duration);
 
+    List<ImageDto> searchByKeyword(String keyword);
 }
 

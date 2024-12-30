@@ -9,9 +9,11 @@ import kettlebell.showimages.model.dto.ImageDto;
 import kettlebell.showimages.repository.ImageRepository;
 import kettlebell.showimages.repository.ProofOfPlayRepository;
 import kettlebell.showimages.repository.SlideShowRepository;
+import kettlebell.showimages.service.mapper.ImageMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,12 +28,13 @@ public class SlideShowServiceImpl implements SlideShowService {
     private final ImageRepository imageRepository;
     private final ProofOfPlayRepository proofOfPlayRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ImageMapper imageMapper;
 
     @Override
     public Long createSlideShow(List<ImageDto> imageDtoList) {
 
         List<String> urls = imageDtoList.stream()
-                .map(ImageDto::getUrl)
+                .map(dto -> dto.getUrl().toString())
                 .toList();
 
         List<Image> images = imageRepository.findByUrlIn(urls);
@@ -47,11 +50,11 @@ public class SlideShowServiceImpl implements SlideShowService {
     }
 
     @Override
+    @Transactional
     public void deleteSlideShow(Long slideShowId) {
-        slideShowRepository.findById(slideShowId)
-                .orElseThrow(() -> new EntityNotFoundException("SlideShow not found"));
-        slideShowRepository.deleteById(slideShowId);
-
+        if (slideShowRepository.existsById(slideShowId)) {
+            slideShowRepository.deleteById(slideShowId);
+        } else throw new EntityNotFoundException("SlideShow doesn't exist");
     }
 
     @Override
@@ -61,14 +64,15 @@ public class SlideShowServiceImpl implements SlideShowService {
         if (images.isEmpty()) {
             throw new EntityNotFoundException("SlideShow not found with ID: " + slideShowId);
         }
-        return mappingToDto(images, slideShowId);
+        return imageMapper.toImageDtoListFromOneSlideShow(images, slideShowId);
     }
 
     @Override
     public void saveProofOfPlayAsync(Long slideShowId, Long imageId) {
-        slideShowRepository.findById(slideShowId)
-                .orElseThrow(() -> new EntityNotFoundException("SlideShow not found with ID: " + slideShowId));
 
+        if (!slideShowRepository.existsById(slideShowId)) {
+            throw new EntityNotFoundException("SlideShow not found with ID: " + slideShowId);
+        }
         Image image = imageRepository.findById(imageId)
                 .orElseThrow(() -> new EntityNotFoundException("Image not found with ID: " + imageId));
 
@@ -82,19 +86,6 @@ public class SlideShowServiceImpl implements SlideShowService {
 
         CompletableFuture.completedFuture(action);
 
-    }
-
-    private List<ImageDto> mappingToDto(List<Image> images, Long slideShowId) {
-        List<Long> listSlideShowId = List.of(slideShowId);
-        return images.stream()
-                .map(img -> ImageDto.builder()
-                        .id(img.getId())
-                        .url(img.getUrl())
-                        .duration(img.getDuration())
-                        .date(img.getDate().toString())
-                        .slideShowIds(listSlideShowId)
-                        .build())
-                .toList();
     }
 }
 

@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-
 @Entity
 @Data
 public class Image {
@@ -26,9 +25,7 @@ public class Image {
     @Column(nullable = false)
     private LocalDateTime date;
 
-
     @ManyToMany(mappedBy = "images", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<SlideShow> slideshows = new ArrayList<>();
-
 }

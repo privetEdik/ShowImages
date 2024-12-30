@@ -5,93 +5,63 @@ import kettlebell.showimages.exception.ImageExistsException;
 import kettlebell.showimages.event.ImageAddedEvent;
 import kettlebell.showimages.event.ImageDeletedEvent;
 import kettlebell.showimages.model.Image;
-import kettlebell.showimages.model.SlideShow;
 import kettlebell.showimages.model.dto.ImageDto;
 import kettlebell.showimages.repository.ImageRepository;
-import kettlebell.showimages.validator.ImageValidator;
+import kettlebell.showimages.service.mapper.ImageMapper;
+import kettlebell.showimages.service.validator.ImageValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
+
 
 @Service
 @RequiredArgsConstructor
-public class ImageServiceImpl implements ImageService{
+public class ImageServiceImpl implements ImageService {
 
     private final ImageRepository imageRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ImageValidator validator;
+    private final ImageMapper imageMapper;
+
 
     public ImageDto addImage(ImageDto imageDto) {
 
-        if (!validator.isValidImageExtension(imageDto.getUrl())) {
-            throw new IllegalArgumentException("Invalid image URL");
+        if (validator.isNotValidImageExtension(imageDto.getUrl().toString())) {
+            throw new IllegalArgumentException("image url does not contain a valid extension");
         }
-        Image image = new Image();
-        image.setUrl(imageDto.getUrl());
-        image.setDuration(imageDto.getDuration());
-        image.setDate(LocalDateTime.now());
+
+        Image image = imageMapper.toImage(imageDto);
+
         try {
             Image savedImage = imageRepository.save(image);
-
             eventPublisher.publishEvent(new ImageAddedEvent(this, savedImage.getId()));
-
-            return ImageDto.builder()
-                    .id(savedImage.getId())
-                    .url(savedImage.getUrl())
-                    .duration(savedImage.getDuration())
-                    .date(savedImage.getDate().toString())
-                    .build();
+            return imageMapper.toImageDto(savedImage);
         } catch (DataIntegrityViolationException e) {
-            throw new ImageExistsException("image with this address already exists");
+            throw new ImageExistsException("image with this address already exists", e);
         }
     }
 
+    @Transactional
     public void deleteImage(Long id) {
-
-        if (!imageRepository.existsById(id)) {
-            throw new EntityNotFoundException("Image not found");
-        }
-        imageRepository.deleteById(id);
-
-        eventPublisher.publishEvent(new ImageDeletedEvent(this, id));
+        if (imageRepository.existsById(id)) {
+            imageRepository.removeImageFromAllSlideShows(id);
+            imageRepository.deleteImageById(id);
+            eventPublisher.publishEvent(new ImageDeletedEvent(this, id));
+        } else throw new EntityNotFoundException("Image doesn't exist");
     }
 
-    public List<ImageDto> searchImages(String keyword, Integer duration) {
-        List<Image> keywordResults = keyword != null && !keyword.isBlank()
-                ? imageRepository.findImagesByKeyword(keyword)
-                : new ArrayList<>();
-
-        List<Image> durationResults = duration != null && duration > 0
-                ? imageRepository.findImagesByDuration(duration)
-                : new ArrayList<>();
-
-        List<Image> images = Stream.concat(keywordResults.stream(), durationResults.stream())
-                .distinct()
-                .toList();
-
-        return mappingToDto(images);
+    public List<ImageDto> searchByKeyword(String keyword) {
+        List<Image> keywordResults = imageRepository.findImagesByKeyword(keyword);
+        return imageMapper.toImageDtoListFromManySlideShow(keywordResults);
     }
 
-    private List<ImageDto> mappingToDto(List<Image> images) {
-        return images.stream()
-                .map(img -> ImageDto.builder()
-                        .id(img.getId())
-                        .url(img.getUrl())
-                        .duration(img.getDuration())
-                        .date(img.getDate().toString())
-                        .slideShowIds(getSlideShowIds(img.getSlideshows()))
-                        .build())
-                .toList();
-    }
-
-    private List<Long> getSlideShowIds(List<SlideShow> list) {
-        return list.stream().map(SlideShow::getId).toList();
+    public List<ImageDto> searchByDuration(Integer duration) {
+        List<Image> durationResults = imageRepository.findImagesByDuration(duration);
+        return imageMapper.toImageDtoListFromManySlideShow(durationResults);
     }
 
 }

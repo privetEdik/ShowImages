@@ -11,5 +11,4 @@ public class ImageAddedEvent extends ApplicationEvent {
         super(source);
         this.imageId = imageId;
     }
-
 }

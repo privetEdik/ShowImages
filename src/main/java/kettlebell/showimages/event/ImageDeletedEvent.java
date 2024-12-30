@@ -11,5 +11,4 @@ public class ImageDeletedEvent extends ApplicationEvent {
         super(source);
         this.imageId = imageId;
     }
-
 }
